@@ -15,9 +15,33 @@ namespace DataToolkit
         // List to store processed files
         private List<string> processedFiles = new List<string>();
 
+        // Application settings
+        private Settings appSettings;
+        private const string SettingsFileName = "settings.json";
+
         public MainWindow()
         {
             InitializeComponent();
+            LoadSettings();
+        }
+
+        private void LoadSettings()
+        {
+            try
+            {
+                string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string settingsPath = System.IO.Path.Combine(appDirectory, SettingsFileName);
+
+                appSettings = Settings.LoadSettings(settingsPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading settings: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // Create default settings if loading fails
+                appSettings = new Settings();
+            }
         }
 
         #region Button Click Handlers
@@ -36,8 +60,25 @@ namespace DataToolkit
 
         private void OnSettingsClick(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Settings will be implemented");
-            // TODO: Create and show Settings form
+            SettingsWindow settingsWindow = new SettingsWindow(appSettings);
+            settingsWindow.Owner = this;
+
+            bool? result = settingsWindow.ShowDialog();
+
+            if (result == true)
+            {
+                // Settings were saved, you might want to update UI or reload certain components
+                if (appSettings.DebugMode)
+                {
+                    // Add debug mode specific logic if needed
+                }
+
+                // Update window title if name is set
+                if (!string.IsNullOrEmpty(appSettings.Name))
+                {
+                    Title = $"Data Toolkit - {appSettings.Name}";
+                }
+            }
         }
 
         private void OnOneOffClick(object sender, RoutedEventArgs e)
@@ -209,6 +250,12 @@ namespace DataToolkit
             {
                 ExpandDragPanel();
             }
+
+            // Use working folder from settings if available
+            if (!string.IsNullOrEmpty(appSettings.WorkingFolder_Path) && appSettings.DebugMode)
+            {
+                Title = $"Data Toolkit - {appSettings.Name} - Working in: {appSettings.WorkingFolder_Path}";
+            }
         }
 
         #endregion
@@ -223,11 +270,32 @@ namespace DataToolkit
                 return;
             }
 
-            // Demo - show file list
-            string fileList = string.Join(Environment.NewLine, processedFiles);
-            MessageBox.Show($"Processing {processedFiles.Count} files:{Environment.NewLine}{fileList}", "Processing Files", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Check if working folder is set in settings
+            if (!string.IsNullOrEmpty(appSettings.WorkingFolder_Path) && Directory.Exists(appSettings.WorkingFolder_Path))
+            {
+                // Use working folder from settings
+                if (appSettings.DebugMode)
+                {
+                    string fileList = string.Join(Environment.NewLine, processedFiles);
+                    MessageBox.Show($"Debug Mode: Would process {processedFiles.Count} files to {appSettings.WorkingFolder_Path}:{Environment.NewLine}{fileList}",
+                                   "Debug Mode", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    // Normal processing mode
+                    string fileList = string.Join(Environment.NewLine, processedFiles);
+                    MessageBox.Show($"Processing {processedFiles.Count} files to {appSettings.WorkingFolder_Path}:{Environment.NewLine}{fileList}",
+                                   "Processing Files", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            // TODO: Implement actual file processing logic or delegate to appropriate handler
+                    // TODO: Add actual processing logic here
+                }
+            }
+            else
+            {
+                // No working folder set or folder doesn't exist
+                MessageBox.Show("Working folder not set or doesn't exist. Please check settings.",
+                                "Settings Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void OnClearListClick(object sender, RoutedEventArgs e)
@@ -247,6 +315,12 @@ namespace DataToolkit
                 Title = "Select Files",
                 Filter = "All Files (*.*)|*.*"
             };
+
+            // Set initial directory from settings if available
+            if (!string.IsNullOrEmpty(appSettings.WorkingFolder_Path) && Directory.Exists(appSettings.WorkingFolder_Path))
+            {
+                openFileDialog.InitialDirectory = appSettings.WorkingFolder_Path;
+            }
 
             if (openFileDialog.ShowDialog() == true)
             {
