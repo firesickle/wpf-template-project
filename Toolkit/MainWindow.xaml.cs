@@ -101,8 +101,10 @@ namespace DataToolkit
 
         private void OnDataMapClick(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("DataMap will be implemented");
-            // TODO: Create and show DataMap form
+            // Create and show the DataMap window
+            DataMapWindow dataMapWindow = new DataMapWindow();
+            dataMapWindow.Owner = this;
+            dataMapWindow.ShowDialog();
         }
 
         private void OnViewSamplesClick(object sender, RoutedEventArgs e)
